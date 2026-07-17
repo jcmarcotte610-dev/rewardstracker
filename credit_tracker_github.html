@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credit Rewards Tracker</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --ink:#16233A;
+    --ink-soft:#4B5768;
+    --muted:#8B94A3;
+    --paper:#FAF7F1;
+    --card:#FFFFFF;
+    --line:#E4DFD3;
+    --navy:#2B4C7E;
+    --navy-deep:#16233A;
+    --green:#2F6B4F;
+    --green-bg:#E7F1EB;
+    --amber:#9A6A0C;
+    --amber-bg:#FBF0DC;
+    --red:#A23B3B;
+    --red-bg:#FAEAEA;
+    --gray-bg:#EFEDE6;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:900px;margin:0 auto;padding:1.25rem 1rem 4rem;}
+  header{margin-bottom:1.25rem;}
+  h1{
+    font-family:Georgia,"Times New Roman",serif;
+    font-size:26px;
+    font-weight:600;
+    margin:0 0 2px;
+    color:var(--navy-deep);
+    letter-spacing:-0.01em;
+  }
+  .subtitle{font-size:13.5px;color:var(--ink-soft);margin:0;}
+  nav.tabs{
+    display:flex;
+    gap:4px;
+    background:var(--gray-bg);
+    padding:4px;
+    border-radius:12px;
+    margin:1rem 0 1.25rem;
+    overflow-x:auto;
+  }
+  nav.tabs button{
+    flex:1;
+    border:none;
+    background:transparent;
+    padding:9px 8px;
+    font-size:13.5px;
+    font-weight:600;
+    color:var(--ink-soft);
+    border-radius:9px;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:background .15s, color .15s;
+  }
+  nav.tabs button.active{
+    background:var(--card);
+    color:var(--navy-deep);
+    box-shadow:0 1px 2px rgba(22,35,58,0.08);
+  }
+  section.view{display:none;}
+  section.view.active{display:block;}
+
+  .ticket{
+    display:flex;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    margin-bottom:10px;
+    overflow:hidden;
+  }
+  .ticket.done{opacity:.55;}
+  .ticket-main{flex:1;padding:12px 14px;min-width:0;}
+  .ticket-side{
+    width:96px;
+    flex-shrink:0;
+    border-left:1px dashed var(--line);
+    padding:12px 10px;
+    text-align:center;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:2px;
+  }
+  .card-badge{
+    display:inline-block;
+    font-size:10.5px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.03em;
+    padding:2px 7px;
+    border-radius:5px;
+    margin-bottom:5px;
+  }
+  .badge-platinum{background:#EDE6DA;color:#6B5A3D;}
+  .badge-csr{background:#DCE6F5;color:var(--navy);}
+  .badge-gold{background:#F3E6C9;color:#8A6A1B;}
+  .credit-name{font-size:14.5px;font-weight:600;margin:0 0 2px;color:var(--ink);}
+  .credit-note{font-size:12.5px;color:var(--muted);line-height:1.4;margin:0;}
+  .amount{font-size:15px;font-weight:700;color:var(--ink);}
+  .days-num{font-size:19px;font-weight:700;line-height:1;}
+  .days-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;}
+  .status-upcoming .days-num{color:var(--ink);}
+  .status-overdue .days-num{color:var(--red);}
+  .status-done .days-num{color:var(--muted);}
+  select.statusSelect{
+    margin-top:8px;
+    width:100%;
+    font-size:12px;
+    padding:5px 4px;
+    border-radius:6px;
+    border:1px solid var(--line);
+    background:var(--card);
+    color:var(--ink-soft);
+  }
+  .pill{
+    display:inline-block;
+    font-size:11px;
+    font-weight:600;
+    padding:2px 8px;
+    border-radius:20px;
+  }
+  .pill-upcoming{background:var(--amber-bg);color:var(--amber);}
+  .pill-overdue{background:var(--red-bg);color:var(--red);}
+  .pill-done{background:var(--gray-bg);color:var(--muted);}
+
+  .filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  .filters select, .filters input{
+    font-size:13px;
+    padding:7px 9px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--card);
+    color:var(--ink);
+  }
+  .filters input{flex:1;min-width:140px;}
+
+  .logrow{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:9px 12px;
+    margin-bottom:6px;
+    font-size:13px;
+  }
+  .logrow .lcard{width:90px;flex-shrink:0;font-size:11px;font-weight:700;color:var(--ink-soft);}
+  .logrow .lcredit{flex:1;min-width:0;}
+  .logrow .lcredit .name{font-weight:600;}
+  .logrow .lcredit .period{color:var(--muted);font-size:11.5px;}
+  .logrow .lamount{width:56px;text-align:right;font-weight:600;flex-shrink:0;}
+  .logrow select{
+    font-size:12px;
+    padding:4px 5px;
+    border-radius:6px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    flex-shrink:0;
+  }
+
+  .dash-section{margin-bottom:1.75rem;}
+  .dash-title{font-size:15px;font-weight:700;color:var(--navy-deep);margin:0 0 8px;}
+  .dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;}
+  .stat-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;}
+  .stat-card .label{font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.02em;margin-bottom:6px;}
+  .stat-row{display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0;}
+  .stat-row .k{color:var(--muted);}
+  .stat-row .v{font-weight:600;}
+  .stat-row.remaining .v{color:var(--navy);}
+  .stat-row.total-row{border-top:1px solid var(--line);margin-top:4px;padding-top:5px;font-weight:700;}
+
+  .settings-box{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-soft);margin-bottom:5px;}
+  .field input{
+    font-size:14px;
+    padding:8px 10px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    width:100%;
+    max-width:220px;
+  }
+  .field .hint{font-size:11.5px;color:var(--muted);margin-top:4px;}
+  button.primary{
+    background:var(--navy);
+    color:#fff;
+    border:none;
+    padding:9px 18px;
+    border-radius:8px;
+    font-size:13.5px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  button.primary:active{transform:scale(0.98);}
+  .savedmsg{font-size:12.5px;color:var(--green);margin-left:10px;}
+  .empty{text-align:center;padding:2rem 1rem;color:var(--muted);font-size:13.5px;}
+  .toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;color:var(--ink-soft);}
+  .multiselect{position:relative;display:inline-block;}
+  .msbtn{
+    font-size:13px;
+    padding:7px 12px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--card);
+    color:var(--ink);
+    cursor:pointer;
+  }
+  .msbtn .caret{color:var(--muted);font-size:11px;margin-left:3px;}
+  .mspanel{
+    display:none;
+    position:absolute;
+    top:calc(100% + 6px);
+    left:0;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:8px 4px;
+    min-width:170px;
+    box-shadow:0 4px 14px rgba(22,35,58,0.12);
+    z-index:10;
+  }
+  .mspanel.open{display:block;}
+  .msoption{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:7px 10px;
+    font-size:13.5px;
+    color:var(--ink);
+    cursor:pointer;
+    border-radius:6px;
+  }
+  .msoption:hover{background:var(--gray-bg);}
+  .msoption input{margin:0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Credit rewards tracker</h1>
+    <p class="subtitle" id="subhead">Loading…</p>
+    <p class="subtitle" id="syncStatus" style="color:var(--muted);"></p>
+  </header>
+
+  <nav class="tabs">
+    <button data-tab="upnext" class="active">Up next</button>
+    <button data-tab="log">Log</button>
+    <button data-tab="dashboard">Dashboard</button>
+    <button data-tab="settings">Settings</button>
+  </nav>
+
+  <section class="view active" id="view-upnext">
+    <div class="filters" style="margin-bottom:10px;">
+      <div class="multiselect" id="cardFilterWrap">
+        <button type="button" id="cardFilterBtn" class="msbtn">All cards <span class="caret">▾</span></button>
+        <div class="mspanel" id="cardFilterPanel">
+          <label class="msoption"><input type="checkbox" value="Amex Platinum" checked> Amex Platinum</label>
+          <label class="msoption"><input type="checkbox" value="CSR" checked> CSR</label>
+          <label class="msoption"><input type="checkbox" value="Amex Gold" checked> Amex Gold</label>
+        </div>
+      </div>
+    </div>
+    <div class="toggle-row">
+      <input type="checkbox" id="showDoneToggle">
+      <label for="showDoneToggle">Show credits marked done</label>
+    </div>
+    <div id="upnextList"></div>
+  </section>
+
+  <section class="view" id="view-log">
+    <div class="filters">
+      <select id="filterCard">
+        <option value="">All cards</option>
+        <option value="Amex Platinum">Amex Platinum</option>
+        <option value="CSR">CSR</option>
+        <option value="Amex Gold">Amex Gold</option>
+      </select>
+      <select id="filterCadence">
+        <option value="">All cadences</option>
+        <option value="Monthly">Monthly</option>
+        <option value="Quarterly">Quarterly</option>
+        <option value="Semi-Annual">Semi-Annual</option>
+        <option value="Annual">Annual</option>
+        <option value="One-time">One-time</option>
+        <option value="Multi-Year">Multi-Year</option>
+      </select>
+      <select id="filterStatus">
+        <option value="">All statuses</option>
+        <option value="No">Not yet claimed</option>
+        <option value="Yes">Claimed</option>
+        <option value="Not going to use">Not going to use</option>
+      </select>
+      <input type="text" id="filterSearch" placeholder="Search credit name…">
+    </div>
+    <div id="logList"></div>
+  </section>
+
+  <section class="view" id="view-dashboard">
+    <div id="dashboardContent"></div>
+  </section>
+
+  <section class="view" id="view-settings">
+    <div class="settings-box">
+      <div class="field">
+        <label>CSR account open date</label>
+        <input type="date" id="csrOpenInput">
+        <div class="hint">Update this once Chase Sapphire Reserve is opened — every CSR credit date recalculates from it.</div>
+      </div>
+      <div class="field">
+        <label>Amex Platinum → Gold transition date</label>
+        <input type="date" id="transInput">
+        <div class="hint">Last day of Platinum. Gold benefits begin the next day.</div>
+      </div>
+      <button class="primary" id="saveSettingsBtn">Save changes</button>
+      <span class="savedmsg" id="savedMsg" style="display:none;">Saved</span>
+    </div>
+  </section>
+</div>
+
+<script>
+function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
+function addMonths(d,n){ return new Date(d.getFullYear(), d.getMonth()+n, d.getDate()); }
+function addDays(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; }
+function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function fmtDate(d){ return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function fmtMoney(n){ return '$'+n.toFixed(2).replace(/\.00$/,''); }
+function periodLabel(inst){
+  const s=inst.periodStart;
+  if(inst.cadence==='Monthly') return s.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+  if(inst.cadence==='Quarterly') return 'Q'+(Math.floor(s.getMonth()/3)+1)+' '+s.getFullYear();
+  if(inst.cadence==='Semi-Annual') return 'H'+(s.getMonth()<6?1:2)+' '+s.getFullYear();
+  if(inst.cadence==='Annual') return 'CY'+s.getFullYear();
+  return fmtDate(s)+' – '+fmtDate(inst.periodEnd);
+}
+
+function generateInstances(csrOpenStr, transStr){
+  const csrOpen = new Date(csrOpenStr+'T00:00:00');
+  const trans = new Date(transStr+'T00:00:00');
+  const inst = [];
+
+  const platMonthly = [
+    ['Uber Cash',15.00,"Add card in Uber app; no Dec bonus since card downgrades before then"],
+    ['Digital Entertainment credit',25.00,"Disney+, Hulu, NYT, WSJ, Peacock, etc — auto-applies"],
+    ["Walmart+ credit",12.95,"Covers membership if enrolled"],
+    ['CLEAR Plus credit',17.42,"Only relevant if enrolled in CLEAR"],
+  ];
+  [-2,-1,0].forEach(offset=>{
+    const pStart = startOfMonth(addMonths(trans, offset));
+    const pEnd = endOfMonth(addMonths(trans, offset));
+    platMonthly.forEach(([name,amt,note])=>{
+      inst.push({card:'Amex Platinum',credit:name,cadence:'Monthly',amount:amt,note,periodStart:pStart,periodEnd:pEnd});
+    });
+  });
+
+  const q3Start = startOfMonth(addMonths(trans,-2));
+  const q3End = endOfMonth(trans);
+  inst.push({card:'Amex Platinum',credit:'Resy credit (quarterly)',cadence:'Quarterly',amount:100,note:"Jul-Sep window; separate from Gold's smaller semi-annual Resy credit",periodStart:q3Start,periodEnd:q3End});
+  inst.push({card:'Amex Platinum',credit:'lululemon credit (quarterly)',cadence:'Quarterly',amount:75,note:"Only if you shop lululemon anyway",periodStart:q3Start,periodEnd:q3End});
+  inst.push({card:'Amex Platinum',credit:'Hotel credit (FHR/Hotel Collection, 2nd half)',cadence:'Semi-Annual',amount:300,note:"Must book prepaid via Amex Travel before downgrade — forfeited otherwise",periodStart:q3Start,periodEnd:q3End});
+
+  const cyStart = new Date(trans.getFullYear(),0,1);
+  const cyEnd = trans;
+  inst.push({card:'Amex Platinum',credit:'Equinox credit',cadence:'Annual',amount:300,note:"Only relevant if you already hold/want an Equinox membership",periodStart:cyStart,periodEnd:cyEnd});
+  inst.push({card:'Amex Platinum',credit:'Airline incidental fee credit',cadence:'Annual',amount:200,note:"Select one qualifying airline; check if unused for 2026",periodStart:cyStart,periodEnd:cyEnd});
+  inst.push({card:'Amex Platinum',credit:'Oura Ring credit',cadence:'One-time',amount:200,note:"Only if already considering an Oura Ring purchase",periodStart:cyStart,periodEnd:cyEnd});
+  inst.push({card:'Amex Platinum',credit:'Uber One membership credit',cadence:'Annual',amount:120,note:"Covers annual Uber One membership fee if enrolled",periodStart:cyStart,periodEnd:cyEnd});
+  inst.push({card:'Amex Platinum',credit:'Global Entry/TSA PreCheck credit',cadence:'Multi-Year',amount:120,note:"Gold does NOT offer this credit — use before downgrade if cycle is unused",periodStart:cyStart,periodEnd:cyEnd});
+
+  const csrMonthly = [
+    ['Lyft credit',10.00,"Auto-applies on Lyft rides (thru 9/30/27 per current terms)"],
+    ['DashPass credit',25.00,"$5 restaurant + 2x $10 non-restaurant, combined monthly cap"],
+    ['Peloton credit',10.00,"Requires active Peloton membership"],
+  ];
+  for(let o=0;o<12;o++){
+    const pStart = startOfMonth(addMonths(csrOpen,o));
+    const pEnd = endOfMonth(addMonths(csrOpen,o));
+    csrMonthly.forEach(([name,amt,note])=>{
+      inst.push({card:'CSR',credit:name,cadence:'Monthly',amount:amt,note,periodStart:pStart,periodEnd:pEnd});
+    });
+  }
+
+  const h1Start = csrOpen;
+  const h1End = endOfMonth(addMonths(csrOpen,5));
+  const h2Start = addDays(h1End,1);
+  const h2End = endOfMonth(addMonths(csrOpen,11));
+  inst.push({card:'CSR',credit:'Dining credit (Exclusive Tables)',cadence:'Semi-Annual',amount:150,note:"Auto-applies at eligible merchants",periodStart:h1Start,periodEnd:h1End});
+  inst.push({card:'CSR',credit:'Dining credit (Exclusive Tables)',cadence:'Semi-Annual',amount:150,note:"Auto-applies at eligible merchants",periodStart:h2Start,periodEnd:h2End});
+  inst.push({card:'CSR',credit:'StubHub credit',cadence:'Semi-Annual',amount:150,note:"Auto-applies",periodStart:h1Start,periodEnd:h1End});
+  inst.push({card:'CSR',credit:'StubHub credit',cadence:'Semi-Annual',amount:150,note:"Auto-applies",periodStart:h2Start,periodEnd:h2End});
+  inst.push({card:'CSR',credit:'General travel credit (incl. Amtrak)',cadence:'Annual',amount:300,note:"Auto-reimburses first $300 of eligible travel spend each cardmember year",periodStart:h1Start,periodEnd:h2End});
+  inst.push({card:'CSR',credit:'Global Entry/TSA PreCheck/NEXUS',cadence:'Multi-Year',amount:120,note:"One statement credit per 4-year cycle",periodStart:h1Start,periodEnd:endOfMonth(addMonths(csrOpen,47))});
+
+  const goldMonthly = [
+    ['Dining credit',10.00,"Grubhub, Cheesecake Factory, BWW, Five Guys, Wonder — enroll ahead of Oct"],
+    ['Uber Cash',10.00,"Add card in Uber app; works for rides + Eats"],
+    ['Dunkin credit',7.00,"Enroll once via Benefits tab"],
+  ];
+  for(let o=1;o<=12;o++){
+    const pStart = startOfMonth(addMonths(trans,o));
+    const pEnd = endOfMonth(addMonths(trans,o));
+    goldMonthly.forEach(([name,amt,note])=>{
+      inst.push({card:'Amex Gold',credit:name,cadence:'Monthly',amount:amt,note,periodStart:pStart,periodEnd:pEnd});
+    });
+  }
+
+  const goldH2_26_start = addDays(trans,1);
+  const goldH2_26_end = new Date(trans.getFullYear(),11,31);
+  inst.push({card:'Amex Gold',credit:'Resy credit',cadence:'Semi-Annual',amount:50,note:"Smaller than Platinum's quarterly $100 — prorated by calendar half, not join date",periodStart:goldH2_26_start,periodEnd:goldH2_26_end});
+  const y2 = trans.getFullYear()+1;
+  inst.push({card:'Amex Gold',credit:'Resy credit',cadence:'Semi-Annual',amount:50,note:"",periodStart:new Date(y2,0,1),periodEnd:new Date(y2,5,30)});
+  inst.push({card:'Amex Gold',credit:'Resy credit',cadence:'Semi-Annual',amount:50,note:"",periodStart:new Date(y2,6,1),periodEnd:new Date(y2,11,31)});
+
+  inst.forEach(i=>{ i.key = i.card+'||'+i.credit+'||'+ymd(i.periodStart); });
+  return inst;
+}
+
+// ---- Firebase setup ----
+// 1. Replace the values below with your own Firebase project config
+//    (Firebase console -> Project settings -> General -> Your apps -> Web app).
+// 2. DOC_ID is a private, hard-to-guess key that scopes your data in Firestore.
+//    Keep the same value here and in your Firestore security rule.
+const firebaseConfig = {
+  apiKey: "AIzaSyBlX-Z4TW2zOa-ow8Ld0lLRD2rPVl84mcQ",
+  authDomain: "credit-card-rewards-f5996.firebaseapp.com",
+  projectId: "credit-card-rewards-f5996",
+  storageBucket: "credit-card-rewards-f5996.firebasestorage.app",
+  messagingSenderId: "101529049507",
+  appId: "1:101529049507:web:8567e44c756d3b5f782216"
+};
+const DOC_ID = "f3817aae341585fbec6800f340e5d301";
+
+let db = null;
+let docRef = null;
+let firebaseReady = false;
+
+function initFirebase(){
+  try{
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    docRef = db.collection('creditTracker').doc(DOC_ID);
+    firebaseReady = true;
+  }catch(e){
+    console.error('Firebase init failed', e);
+    firebaseReady = false;
+  }
+}
+
+function setSyncStatus(text, isError){
+  const el = document.getElementById('syncStatus');
+  el.textContent = text;
+  el.style.color = isError ? 'var(--red)' : 'var(--muted)';
+}
+
+let STATE = { csrOpen:null, trans:null, claimed:{}, instances:[] };
+
+async function loadState(){
+  const defaults = { csrOpen: ymd(new Date()), trans: '2026-09-30' };
+  if(!firebaseReady){
+    STATE.csrOpen = defaults.csrOpen; STATE.trans = defaults.trans; STATE.claimed = {};
+    STATE.instances = generateInstances(STATE.csrOpen, STATE.trans);
+    setSyncStatus('Offline — Firebase not configured', true);
+    return;
+  }
+  setSyncStatus('Connecting…');
+  try{
+    const snap = await docRef.get();
+    if(snap.exists){
+      const data = snap.data();
+      STATE.csrOpen = (data.settings && data.settings.csrOpen) || defaults.csrOpen;
+      STATE.trans = (data.settings && data.settings.trans) || defaults.trans;
+      STATE.claimed = data.claimed || {};
+    } else {
+      STATE.csrOpen = defaults.csrOpen; STATE.trans = defaults.trans; STATE.claimed = {};
+      await docRef.set({ settings: defaults, claimed: {} });
+    }
+    STATE.instances = generateInstances(STATE.csrOpen, STATE.trans);
+    setSyncStatus('Synced');
+  }catch(e){
+    console.error(e);
+    STATE.csrOpen = defaults.csrOpen; STATE.trans = defaults.trans; STATE.claimed = {};
+    STATE.instances = generateInstances(STATE.csrOpen, STATE.trans);
+    setSyncStatus('Connection error — check Firebase config', true);
+  }
+}
+
+function watchRemoteChanges(){
+  if(!firebaseReady) return;
+  docRef.onSnapshot(snap=>{
+    if(!snap.exists) return;
+    const data = snap.data();
+    const newCsrOpen = (data.settings && data.settings.csrOpen) || STATE.csrOpen;
+    const newTrans = (data.settings && data.settings.trans) || STATE.trans;
+    const newClaimed = data.claimed || {};
+    const changed = newCsrOpen!==STATE.csrOpen || newTrans!==STATE.trans || JSON.stringify(newClaimed)!==JSON.stringify(STATE.claimed);
+    if(changed){
+      STATE.csrOpen = newCsrOpen; STATE.trans = newTrans; STATE.claimed = newClaimed;
+      STATE.instances = generateInstances(STATE.csrOpen, STATE.trans);
+      renderAll();
+      setSyncStatus('Synced (updated from another device)');
+      setTimeout(()=>setSyncStatus('Synced'), 2500);
+    }
+  }, err=>{
+    console.error(err);
+    setSyncStatus('Connection error — check Firebase config', true);
+  });
+}
+
+async function saveSettings(csrOpen, trans){
+  STATE.csrOpen = csrOpen; STATE.trans = trans;
+  STATE.instances = generateInstances(csrOpen, trans);
+  if(!firebaseReady) return;
+  try{
+    await docRef.set({ settings: {csrOpen, trans} }, {merge:true});
+    setSyncStatus('Synced');
+  }catch(e){
+    console.error(e);
+    setSyncStatus('Could not save — check Firebase config', true);
+  }
+}
+
+async function setClaimed(key, status){
+  STATE.claimed[key] = status;
+  if(!firebaseReady) return;
+  try{
+    await docRef.set({ claimed: STATE.claimed }, {merge:true});
+  }catch(e){
+    console.error(e);
+    setSyncStatus('Could not save — check Firebase config', true);
+  }
+}
+
+function getStatus(inst){ return STATE.claimed[inst.key] || 'No'; }
+
+function cardBadgeClass(card){
+  if(card==='Amex Platinum') return 'badge-platinum';
+  if(card==='CSR') return 'badge-csr';
+  return 'badge-gold';
+}
+
+function daysUntil(d){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const target = new Date(d); target.setHours(0,0,0,0);
+  return Math.round((target-today)/86400000);
+}
+
+function getSelectedCards(){
+  const boxes = document.querySelectorAll('#cardFilterPanel input[type=checkbox]');
+  const checked = Array.from(boxes).filter(b=>b.checked).map(b=>b.value);
+  return checked;
+}
+
+function updateCardFilterLabel(){
+  const selected = getSelectedCards();
+  const btn = document.getElementById('cardFilterBtn');
+  const total = document.querySelectorAll('#cardFilterPanel input[type=checkbox]').length;
+  let label;
+  if(selected.length===0 || selected.length===total) label = 'All cards';
+  else if(selected.length===1) label = selected[0];
+  else label = selected.length+' cards';
+  btn.innerHTML = label + ' <span class="caret">▾</span>';
+}
+
+function renderUpNext(){
+  const showDone = document.getElementById('showDoneToggle').checked;
+  const selectedCards = getSelectedCards();
+  const filterActive = selectedCards.length>0 && selectedCards.length<document.querySelectorAll('#cardFilterPanel input[type=checkbox]').length;
+  const groups = {};
+  STATE.instances.forEach(i=>{
+    if(filterActive && !selectedCards.includes(i.card)) return;
+    const gk = i.card+'||'+i.credit;
+    if(!groups[gk]) groups[gk] = [];
+    groups[gk].push(i);
+  });
+  const rows = [];
+  Object.values(groups).forEach(list=>{
+    list.sort((a,b)=>a.periodEnd-b.periodEnd);
+    const open = list.find(i=>getStatus(i)==='No');
+    if(open){
+      rows.push({inst:open, status:'open'});
+    } else {
+      const last = list[list.length-1];
+      rows.push({inst:last, status:'resolved'});
+    }
+  });
+  rows.sort((a,b)=>{
+    if(a.status!==b.status) return a.status==='open' ? -1 : 1;
+    return a.inst.periodEnd - b.inst.periodEnd;
+  });
+
+  const list = document.getElementById('upnextList');
+  const visible = rows.filter(r=> showDone || r.status==='open');
+  if(visible.length===0){
+    list.innerHTML = '<div class="empty">Nothing open right now — nice work.</div>';
+    return;
+  }
+  list.innerHTML = visible.map(r=>{
+    const i = r.inst;
+    const du = daysUntil(i.periodEnd);
+    let statusClass, pillClass, pillText, daysText;
+    if(r.status==='resolved'){
+      statusClass='status-done'; pillClass='pill-done'; pillText='Done for now'; daysText='—';
+    } else if(du<0){
+      statusClass='status-overdue'; pillClass='pill-overdue'; pillText='Overdue'; daysText=Math.abs(du)+'d late';
+    } else {
+      statusClass='status-upcoming'; pillClass='pill-upcoming'; pillText='Upcoming'; daysText=du+'d';
+    }
+    return `<div class="ticket ${r.status==='resolved'?'done':''}">
+      <div class="ticket-main">
+        <span class="card-badge ${cardBadgeClass(i.card)}">${i.card}</span>
+        <span class="pill ${pillClass}" style="float:right;">${pillText}</span>
+        <p class="credit-name">${i.credit}</p>
+        <p class="credit-note">${i.note||''}</p>
+        <select class="statusSelect" data-key="${i.key}">
+          <option value="No" ${getStatus(i)==='No'?'selected':''}>Not yet claimed</option>
+          <option value="Yes" ${getStatus(i)==='Yes'?'selected':''}>Claimed</option>
+          <option value="Not going to use" ${getStatus(i)==='Not going to use'?'selected':''}>Not going to use</option>
+        </select>
+      </div>
+      <div class="ticket-side ${statusClass}">
+        <div class="amount">${fmtMoney(i.amount)}</div>
+        <div class="days-num">${daysText}</div>
+        <div class="days-label">${fmtDate(i.periodEnd)}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('select.statusSelect').forEach(sel=>{
+    sel.addEventListener('change', async (e)=>{
+      await setClaimed(e.target.dataset.key, e.target.value);
+      renderUpNext();
+      renderLog();
+      renderDashboard();
+    });
+  });
+}
+
+function renderLog(){
+  const cardF = document.getElementById('filterCard').value;
+  const cadF = document.getElementById('filterCadence').value;
+  const statF = document.getElementById('filterStatus').value;
+  const searchF = document.getElementById('filterSearch').value.toLowerCase();
+
+  let rows = STATE.instances.slice();
+  if(cardF) rows = rows.filter(i=>i.card===cardF);
+  if(cadF) rows = rows.filter(i=>i.cadence===cadF);
+  if(statF) rows = rows.filter(i=>getStatus(i)===statF);
+  if(searchF) rows = rows.filter(i=>i.credit.toLowerCase().includes(searchF));
+  rows.sort((a,b)=>a.periodEnd-b.periodEnd);
+
+  const list = document.getElementById('logList');
+  if(rows.length===0){
+    list.innerHTML = '<div class="empty">No credits match these filters.</div>';
+    return;
+  }
+  list.innerHTML = rows.map(i=>{
+    return `<div class="logrow">
+      <span class="lcard">${i.card}</span>
+      <div class="lcredit">
+        <div class="name">${i.credit}</div>
+        <div class="period">${periodLabel(i)} · through ${fmtDate(i.periodEnd)}</div>
+      </div>
+      <span class="lamount">${fmtMoney(i.amount)}</span>
+      <select data-key="${i.key}">
+        <option value="No" ${getStatus(i)==='No'?'selected':''}>No</option>
+        <option value="Yes" ${getStatus(i)==='Yes'?'selected':''}>Yes</option>
+        <option value="Not going to use" ${getStatus(i)==='Not going to use'?'selected':''}>Skip</option>
+      </select>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('select').forEach(sel=>{
+    sel.addEventListener('change', async (e)=>{
+      await setClaimed(e.target.dataset.key, e.target.value);
+      renderUpNext();
+      renderDashboard();
+    });
+  });
+}
+
+function periodBounds(kind){
+  const today = new Date(); today.setHours(0,0,0,0);
+  if(kind==='month') return [startOfMonth(today), endOfMonth(today)];
+  if(kind==='quarter'){
+    const qStartMonth = Math.floor(today.getMonth()/3)*3;
+    const qs = new Date(today.getFullYear(), qStartMonth, 1);
+    const qe = endOfMonth(new Date(today.getFullYear(), qStartMonth+2, 1));
+    return [qs, qe];
+  }
+  if(kind==='year') return [new Date(today.getFullYear(),0,1), new Date(today.getFullYear(),11,31)];
+  return [null,null];
+}
+
+function renderDashboard(){
+  const cards = ['Amex Platinum','CSR','Amex Gold'];
+  const buckets = [
+    ['This month','month'],
+    ['This quarter','quarter'],
+    ['This year','year'],
+    ['All time', null],
+  ];
+  let html = '';
+  buckets.forEach(([label,kind])=>{
+    const [bs,be] = kind ? periodBounds(kind) : [null,null];
+    html += `<div class="dash-section"><p class="dash-title">${label}</p><div class="dash-grid">`;
+    let totalClaimed=0, totalAvail=0;
+    cards.forEach(card=>{
+      let claimedSum=0, availSum=0;
+      STATE.instances.forEach(i=>{
+        if(i.card!==card) return;
+        if(kind && !(i.periodStart>=bs && i.periodStart<=be)) return;
+        const st = getStatus(i);
+        if(st==='Not going to use') return;
+        availSum += i.amount;
+        if(st==='Yes') claimedSum += i.amount;
+      });
+      totalClaimed += claimedSum; totalAvail += availSum;
+      const remaining = availSum - claimedSum;
+      html += `<div class="stat-card">
+        <div class="label">${card}</div>
+        <div class="stat-row"><span class="k">Claimed</span><span class="v">${fmtMoney(claimedSum)}</span></div>
+        <div class="stat-row"><span class="k">Available</span><span class="v">${fmtMoney(availSum)}</span></div>
+        <div class="stat-row remaining"><span class="k">Remaining</span><span class="v">${fmtMoney(remaining)}</span></div>
+      </div>`;
+    });
+    html += `<div class="stat-card">
+        <div class="label">Total</div>
+        <div class="stat-row"><span class="k">Claimed</span><span class="v">${fmtMoney(totalClaimed)}</span></div>
+        <div class="stat-row"><span class="k">Available</span><span class="v">${fmtMoney(totalAvail)}</span></div>
+        <div class="stat-row total-row"><span class="k">Remaining</span><span class="v">${fmtMoney(totalAvail-totalClaimed)}</span></div>
+      </div>`;
+    html += `</div></div>`;
+  });
+  document.getElementById('dashboardContent').innerHTML = html;
+}
+
+function renderSettings(){
+  document.getElementById('csrOpenInput').value = STATE.csrOpen;
+  document.getElementById('transInput').value = STATE.trans;
+}
+
+function renderSubhead(){
+  document.getElementById('subhead').textContent =
+    'CSR opened ' + fmtDate(new Date(STATE.csrOpen+'T00:00:00')) +
+    ' · Platinum → Gold on ' + fmtDate(new Date(STATE.trans+'T00:00:00'));
+}
+
+function renderAll(){
+  renderUpNext();
+  renderLog();
+  renderDashboard();
+  renderSettings();
+  renderSubhead();
+}
+
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('section.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+document.getElementById('showDoneToggle').addEventListener('change', renderUpNext);
+
+document.getElementById('cardFilterBtn').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  document.getElementById('cardFilterPanel').classList.toggle('open');
+});
+document.addEventListener('click', (e)=>{
+  const wrap = document.getElementById('cardFilterWrap');
+  if(!wrap.contains(e.target)){
+    document.getElementById('cardFilterPanel').classList.remove('open');
+  }
+});
+document.querySelectorAll('#cardFilterPanel input[type=checkbox]').forEach(box=>{
+  box.addEventListener('change', ()=>{
+    updateCardFilterLabel();
+    renderUpNext();
+  });
+});
+['filterCard','filterCadence','filterStatus'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', renderLog);
+});
+document.getElementById('filterSearch').addEventListener('input', renderLog);
+
+document.getElementById('saveSettingsBtn').addEventListener('click', async ()=>{
+  const csrOpen = document.getElementById('csrOpenInput').value;
+  const trans = document.getElementById('transInput').value;
+  await saveSettings(csrOpen, trans);
+  renderAll();
+  const msg = document.getElementById('savedMsg');
+  msg.style.display='inline';
+  setTimeout(()=>{ msg.style.display='none'; }, 2000);
+});
+
+(async function init(){
+  initFirebase();
+  await loadState();
+  renderAll();
+  watchRemoteChanges();
+})();
+</script>
+</body>
+</html>
