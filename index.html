@@ -199,6 +199,7 @@
   .days-num{font-size:19px;font-weight:700;line-height:1;}
   .days-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;}
   .status-upcoming .days-num{color:var(--ink);}
+  .status-plansoon .days-num{color:#2E8BFF;}
   .status-overdue .days-num{color:var(--red);}
   .status-done .days-num{color:var(--muted);}
   select.statusSelect{
@@ -219,8 +220,19 @@
     border-radius:20px;
   }
   .pill-upcoming{background:var(--amber-bg);color:var(--amber);}
+  .pill-plansoon{background:#DCEEFF;color:#2E8BFF;}
   .pill-overdue{background:var(--red-bg);color:var(--red);}
   .pill-done{background:var(--gray-bg);color:var(--muted);}
+  .plan-badge{
+    display:inline-block;
+    font-size:11px;
+    font-weight:600;
+    color:#2E8BFF;
+    background:#DCEEFF;
+    padding:2px 8px;
+    border-radius:6px;
+    margin-bottom:6px;
+  }
 
   .filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
   .filters select, .filters input{
@@ -365,6 +377,10 @@
       </div>
     </div>
     <div class="toggle-row">
+      <input type="checkbox" id="planAheadToggle">
+      <label for="planAheadToggle">📅 Only show credits that need advance booking</label>
+    </div>
+    <div class="toggle-row">
       <input type="checkbox" id="showDoneToggle">
       <label for="showDoneToggle">Show credits marked done</label>
     </div>
@@ -465,7 +481,7 @@ function generateInstances(csrOpenStr, transStr){
   const q3End = endOfMonth(trans);
   inst.push({card:'Amex Platinum',credit:'Resy credit (quarterly)',cadence:'Quarterly',amount:100,note:"Jul-Sep window; separate from Gold's smaller semi-annual Resy credit",periodStart:q3Start,periodEnd:q3End});
   inst.push({card:'Amex Platinum',credit:'lululemon credit (quarterly)',cadence:'Quarterly',amount:75,note:"Only if you shop lululemon anyway",periodStart:q3Start,periodEnd:q3End});
-  inst.push({card:'Amex Platinum',credit:'Hotel credit (FHR/Hotel Collection, 2nd half)',cadence:'Semi-Annual',amount:300,note:"Must book prepaid via Amex Travel before downgrade — forfeited otherwise",periodStart:q3Start,periodEnd:q3End});
+  inst.push({card:'Amex Platinum',credit:'Hotel credit (FHR/Hotel Collection, 2nd half)',cadence:'Semi-Annual',amount:300,note:"Must book prepaid via Amex Travel before downgrade — forfeited otherwise",periodStart:q3Start,periodEnd:q3End,planAhead:true,leadDays:21});
 
   const cyStart = new Date(trans.getFullYear(),0,1);
   const cyEnd = trans;
@@ -473,7 +489,7 @@ function generateInstances(csrOpenStr, transStr){
   inst.push({card:'Amex Platinum',credit:'Airline incidental fee credit',cadence:'Annual',amount:200,note:"Select one qualifying airline; check if unused for 2026",periodStart:cyStart,periodEnd:cyEnd});
   inst.push({card:'Amex Platinum',credit:'Oura Ring credit',cadence:'One-time',amount:200,note:"Only if already considering an Oura Ring purchase",periodStart:cyStart,periodEnd:cyEnd});
   inst.push({card:'Amex Platinum',credit:'Uber One membership credit',cadence:'Annual',amount:120,note:"Covers annual Uber One membership fee if enrolled",periodStart:cyStart,periodEnd:cyEnd});
-  inst.push({card:'Amex Platinum',credit:'Global Entry/TSA PreCheck credit',cadence:'Multi-Year',amount:120,note:"Gold does NOT offer this credit — use before downgrade if cycle is unused",periodStart:cyStart,periodEnd:cyEnd});
+  inst.push({card:'Amex Platinum',credit:'Global Entry/TSA PreCheck credit',cadence:'Multi-Year',amount:120,note:"Gold does NOT offer this credit — use before downgrade if cycle is unused",periodStart:cyStart,periodEnd:cyEnd,planAhead:true,leadDays:60});
 
   const csrMonthly = [
     ['Lyft credit',10.00,"Auto-applies on Lyft rides (thru 9/30/27 per current terms)"],
@@ -494,10 +510,10 @@ function generateInstances(csrOpenStr, transStr){
   const h2End = endOfMonth(addMonths(csrOpen,11));
   inst.push({card:'CSR',credit:'Dining credit (Exclusive Tables)',cadence:'Semi-Annual',amount:150,note:"Auto-applies at eligible merchants",periodStart:h1Start,periodEnd:h1End});
   inst.push({card:'CSR',credit:'Dining credit (Exclusive Tables)',cadence:'Semi-Annual',amount:150,note:"Auto-applies at eligible merchants",periodStart:h2Start,periodEnd:h2End});
-  inst.push({card:'CSR',credit:'StubHub credit',cadence:'Semi-Annual',amount:150,note:"Auto-applies",periodStart:h1Start,periodEnd:h1End});
-  inst.push({card:'CSR',credit:'StubHub credit',cadence:'Semi-Annual',amount:150,note:"Auto-applies",periodStart:h2Start,periodEnd:h2End});
-  inst.push({card:'CSR',credit:'General travel credit (incl. Amtrak)',cadence:'Annual',amount:300,note:"Auto-reimburses first $300 of eligible travel spend each cardmember year",periodStart:h1Start,periodEnd:h2End});
-  inst.push({card:'CSR',credit:'Global Entry/TSA PreCheck/NEXUS',cadence:'Multi-Year',amount:120,note:"One statement credit per 4-year cycle",periodStart:h1Start,periodEnd:endOfMonth(addMonths(csrOpen,47))});
+  inst.push({card:'CSR',credit:'StubHub credit',cadence:'Semi-Annual',amount:150,note:"Requires an actual event purchase on StubHub — check what's on sale near your dates",periodStart:h1Start,periodEnd:h1End,planAhead:true,leadDays:14});
+  inst.push({card:'CSR',credit:'StubHub credit',cadence:'Semi-Annual',amount:150,note:"Requires an actual event purchase on StubHub — check what's on sale near your dates",periodStart:h2Start,periodEnd:h2End,planAhead:true,leadDays:14});
+  inst.push({card:'CSR',credit:'General travel credit (incl. Amtrak)',cadence:'Annual',amount:300,note:"Auto-reimburses first $300 of eligible travel spend each cardmember year",periodStart:h1Start,periodEnd:h2End,planAhead:true,leadDays:21});
+  inst.push({card:'CSR',credit:'Global Entry/TSA PreCheck/NEXUS',cadence:'Multi-Year',amount:120,note:"One statement credit per 4-year cycle",periodStart:h1Start,periodEnd:endOfMonth(addMonths(csrOpen,47)),planAhead:true,leadDays:60});
 
   const goldMonthly = [
     ['Dining credit',10.00,"Grubhub, Cheesecake Factory, BWW, Five Guys, Wonder — enroll ahead of Oct"],
@@ -671,11 +687,13 @@ function updateCardFilterLabel(){
 
 function renderUpNext(){
   const showDone = document.getElementById('showDoneToggle').checked;
+  const planAheadOnly = document.getElementById('planAheadToggle').checked;
   const selectedCards = getSelectedCards();
   const filterActive = selectedCards.length>0 && selectedCards.length<document.querySelectorAll('#cardFilterPanel input[type=checkbox]').length;
   const groups = {};
   STATE.instances.forEach(i=>{
     if(filterActive && !selectedCards.includes(i.card)) return;
+    if(planAheadOnly && !i.planAhead) return;
     const gk = i.card+'||'+i.credit;
     if(!groups[gk]) groups[gk] = [];
     groups[gk].push(i);
@@ -710,14 +728,18 @@ function renderUpNext(){
       statusClass='status-done'; pillClass='pill-done'; pillText='Done for now'; daysText='—';
     } else if(du<0){
       statusClass='status-overdue'; pillClass='pill-overdue'; pillText='Overdue'; daysText=Math.abs(du)+'d late';
+    } else if(i.planAhead && du<=i.leadDays){
+      statusClass='status-plansoon'; pillClass='pill-plansoon'; pillText='Plan soon'; daysText=du+'d';
     } else {
       statusClass='status-upcoming'; pillClass='pill-upcoming'; pillText='Upcoming'; daysText=du+'d';
     }
+    const planBadge = i.planAhead ? '<span class="plan-badge">📅 Needs booking</span>' : '';
     return `<div class="ticket ${r.status==='resolved'?'done':''}">
       <div class="ticket-main">
         <span class="card-badge ${cardBadgeClass(i.card)}">${i.card}</span>
         <span class="pill ${pillClass}" style="float:right;">${pillText}</span>
         <p class="credit-name">${i.credit}</p>
+        ${planBadge}
         <p class="credit-note">${i.note||''}</p>
         <select class="statusSelect" data-key="${i.key}">
           <option value="No" ${getStatus(i)==='No'?'selected':''}>Not yet claimed</option>
@@ -872,6 +894,7 @@ document.querySelectorAll('nav.tabs button').forEach(btn=>{
 });
 
 document.getElementById('showDoneToggle').addEventListener('change', renderUpNext);
+document.getElementById('planAheadToggle').addEventListener('change', renderUpNext);
 
 document.getElementById('settingsBtn').addEventListener('click', ()=>{
   renderSettings();
